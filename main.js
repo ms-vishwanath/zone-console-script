@@ -12,37 +12,59 @@ const todayDate = new Date().toISOString().split('T')[0];
 // Tasks array
 const tasks = [
   {
-    name: "PRE PROD TEST 2",
+    name: "ARCHITECTURE REFRAMING",
     des: "TEST 2",
-    st_time: "T08:10:00.000Z",
-    en_time: "T08:12:00.000Z",
+    st_time: "T10:10:00.000Z",
+    en_time: "T10:12:00.000Z",
     type: "66fe8d12c33f43731d10f9ce",
     status: "completed",
-    timespent: "2025-09-26T00:01:00.000Z",
     priority: "high",
     project: "66ffd19bc33f43731d114f47"
   },
   {
-    name: "PRE PROD TEST 2",
+    name: "ARCHITECTURE REFRAMING 2",
     des: "TEST 3",
-    st_time: "T08:13:00.000Z",
-    en_time: "T08:15:00.000Z",
+    st_time: "T10:13:00.000Z",
+    en_time: "T10:15:00.000Z",
     type: "66fe8d12c33f43731d10f9ce",
     status: "completed",
-    timespent: "2025-09-26T00:01:00.000Z",
     priority: "high",
     project: "66ffd19bc33f43731d114f47"
   }
 ];
 
-// Prefix todayDate to st_time and en_time for all tasks before requesting
-function prefixTasksWithDate(tasks, todayDate) {
-  return tasks.map(task => ({
-    ...task,
-    todayDate,
-    st_time: `${todayDate}${task.st_time}`,
-    en_time: `${todayDate}${task.en_time}`
-  }));
+// Helper to format duration as ISO 8601 string (e.g., "PT1M30S" or "2025-09-26T00:01:00.000Z")
+function getTimespentISO(stDate, enDate) {
+  // Calculate the difference in milliseconds
+  const diffMs = enDate - stDate;
+  if (diffMs < 0) return null;
+  // Convert to total seconds
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  // Format as "YYYY-MM-DDT00:MM:SS.000Z" with today's date
+  const datePart = stDate.toISOString().split('T')[0];
+  const pad = n => n.toString().padStart(2, '0');
+  return `${datePart}T${pad(hours)}:${pad(minutes)}:${pad(seconds)}.000Z`;
+}
+
+// Prefix todayDate to st_time and en_time for all tasks before requesting, and generate timespent dynamically
+function prepareTasks(tasks, todayDate) {
+  return tasks.map(task => {
+    const st_time_full = `${todayDate}${task.st_time}`;
+    const en_time_full = `${todayDate}${task.en_time}`;
+    const stDate = new Date(st_time_full);
+    const enDate = new Date(en_time_full);
+    const timespent = getTimespentISO(stDate, enDate);
+    return {
+      ...task,
+      todayDate,
+      st_time: st_time_full,
+      en_time: en_time_full,
+      timespent
+    };
+  });
 }
 
 async function login() {
@@ -74,10 +96,10 @@ async function addTask(token, task) {
 (async () => {
   const token = await login();
 
-  const tasksWithDate = prefixTasksWithDate(tasks, todayDate);
+  const tasksWithDateAndTimespent = prepareTasks(tasks, todayDate);
 
-  for (let i = 0; i < tasksWithDate.length; i++) {
-    await addTask(token, tasksWithDate[i]);
+  for (let i = 0; i < tasksWithDateAndTimespent.length; i++) {
+    await addTask(token, tasksWithDateAndTimespent[i]);
   }
 
   console.log("All tasks processed.");
